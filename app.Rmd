@@ -1,0 +1,93 @@
+---
+output: html_document
+css: style.css
+runtime: shiny
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(shiny)
+library(dplyr)
+library(ggplot2)
+
+
+```
+
+
+
+
+```{r load data, include=FALSE}
+# load data
+ks <- read.csv("data/multipleChoiceResponses.csv")
+```
+
+
+
+```{r female, include=FALSE}
+# female
+ks$gender <- as.factor(ifelse(ks$GenderSelect=="Female","Female",ifelse(ks$GenderSelect=="Male","Male",NA)))
+ks <- ks[!is.na(ks$gender),]
+```
+
+
+
+```{r country, include=FALSE}
+# China listed under People 's Republic of China and Republic of China. 
+levels(ks$Country)[levels(ks$Country)=="People 's Republic of China"] <- "China"
+levels(ks$Country)[levels(ks$Country)=="Republic of China"] <- "China"
+# get rid of other and NA countries
+ks <- ks[ks$Country!="Other" & ks$Country!="" & !is.na(ks$Country),]
+ks$Country <- factor(ks$Country)
+
+
+```
+
+
+
+```{r quick visual number of women in tech per country, include=FALSE}
+kssmall <- ks[,c("Country","gender")]
+kssmall <- kssmall %>%
+  group_by(Country,gender) %>%
+  summarize(count=n())
+
+```
+
+
+```{r gender by country, echo=FALSE}
+ui <- fluidPage(
+  selectInput("Country", label = "Country:",
+              choices = c("Argentina", "Australia", "Belarus", "Belgium","Brazil","Canada","Chile",
+                          "Colombia","Czech Republic","Denmark","Egypt","Finland","France","Germany",      
+                          "Greece","Hong Kong","Hungary","India","Indonesia","Iran","Ireland" ,      
+                          "Israel","Italy","Japan","Kenya","Malaysia","Mexico","Netherlands" ,  
+                          "New Zealand","Nigeria","Norway","Pakistan","China","Philippines","Poland"   ,     
+                          "Portugal","Romania","Russia","Singapore","South Africa" ,"South Korea","Spain"  ,       
+                          "Sweden","Switzerland","Taiwan","Turkey","Ukraine","United Kingdom", "United States",
+                          "Vietnam"), selected = "United States"),
+  mainPanel(
+    
+    # Output: Tabset w/ plot, summary, and table ----
+    tabsetPanel(type = "tabs",
+                tabPanel("Plot", plotOutput("barchart", width = "90%", height = "250px")),
+                tabPanel("Table", tableOutput("table"))
+    )
+  )
+)
+server <- function(input, output) {
+  output$barchart <- renderPlot({
+    ggplot(subset(kssmall, Country==input$Country), aes(gender, count)) +
+      geom_bar(stat = "identity", aes(fill = gender), size = 10, position = "dodge") +
+      xlab("Gender") + ylab("Count") +
+      ggtitle("Women in tech") + 
+      theme_bw()
+  })
+  output$table <- renderTable({
+    kssmall
+  })
+  
+  
+}
+
+
+shinyApp(ui = ui, server = server)
+```
